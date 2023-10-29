@@ -1,6 +1,6 @@
 ---
-title: "Untitled"
-author: "Moumita De"
+title: "Boston House Price Prediction"
+author: "Debangana Mahapatra"
 date: "`r Sys.Date()`"
 output: word_document
 ---
