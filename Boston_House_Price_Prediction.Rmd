@@ -1,0 +1,131 @@
+---
+title: "Untitled"
+author: "Moumita De"
+date: "`r Sys.Date()`"
+output: word_document
+---
+
+```{r}
+# Necessary Librarires
+library(tidyverse)
+library(gridExtra)
+library(DataExplorer)
+library(car)
+library(nortest)
+library(lmtest)
+```
+
+```{r}
+# Importing Data
+data<-read.csv("C:\\Users\\DIBYAKANTI\\Desktop\\Datasets\\boston.csv")
+# Checking for First 6 rows
+head(data)
+# Checking for the data type
+str(data)
+# Checking for missing value
+lapply(data,function(x){sum(is.na(x))})
+# Changing Categorical variables to factors
+data$CHAS<-as.factor(data$CHAS)
+# Summary of the data
+summary(data)
+# Correlation matrix for continuous variable
+df<-data[,-4]
+r=cor(df)
+r
+# library(corrplot)
+# corrplot(r,method="circle")
+# High collinearity checking
+cor(data$TAX,data$RAD)
+# Boxplot function by "price"
+plot_boxplot(df,by="MEDV",nrow=5L,geom_boxplot_args = list("outlier.color"="red"),theme_config=list(text=element_text(size=15),axis.text.y=element_text(size=13),axis.text.x=element_text(size=13)))
+#HISTOGRAM WITH NORMAL CURVE
+par(mfrow=c(2,2))
+library(rcompanion)
+plotNormalHistogram(df$CRIM,col="black",border="green",xlab="CRIM",length=10000,linecol="red",lwd=3)
+plotNormalHistogram(df$ZN,col="black",border="green",xlab="ZN",length=10000,linecol="red",lwd=3)
+plotNormalHistogram(df$INDUS,col="black",border="green",xlab="INDUS",length=10000,linecol="red",lwd=3)
+plotNormalHistogram(df$NOX,col="black",border="green",,xlab="NOX",length=10000,linecol="red",lwd=3)
+par(mfrow=c(2,2))
+plotNormalHistogram(df$RM,col="black",border="green",xlab="RM",length=10000,linecol="red",lwd=3)
+plotNormalHistogram(df$AGE,col="black",border="green",xlab="AGE",length=10000,linecol="red",lwd=3)
+plotNormalHistogram(df$DIS,col="black",border="green",xlab="DIS",length=10000,linecol="red",lwd=3)
+plotNormalHistogram(df$RAD,col="black",border="green",xlab="RAD",length=10000,linecol="red",lwd=3)
+par(mfrow=c(2,3))
+plotNormalHistogram(df$TAX,col="black",border="green",xlab="TAX",length=10000,linecol="red",lwd=3)
+plotNormalHistogram(df$PTRATIO,col="black",border="green",xlab="PTRATIO",length=10000,linecol="red",lwd=3)
+plotNormalHistogram(df$B,col="black",border="green",xlab="B",length=10000,linecol="red",lwd=3)
+plotNormalHistogram(df$LSTAT,col="black",border="green",,xlab="LSTAT",length=10000,linecol="red",lwd=3)
+plotNormalHistogram(df$MEDV,col="black",border="green",xlab="MEDV",length=10000,linecol="red",lwd=3)
+# Barplot of categoriacl variable
+barplot(table(data$CHAS))
+# Distribution of categorical variable in relation to the dependent variable
+ggplot(data) +
+aes(x = reorder(CHAS,MEDV), y = MEDV, fill = CHAS) +
+ geom_boxplot() +
+ scale_fill_hue() +
+ labs(x = "CHAS") +
+ theme_gray() + 
+ theme(legend.position = "none",
+ axis.text = element_text(size = 15),
+ axis.title = element_text(size=15)) 
+# Linear model fitting
+model=lm(data$MEDV~.,data)
+# Estimated Coefficients
+summary(model)
+# ANOVA
+anova(model)
+# For checking the normality assumptions of residuals
+resi=residuals(model)
+resi
+# Q-Q plot for seeing the normality of the error terms
+plot(model,which=2,lwd=1)
+# For accurate checking by shapiro wilk test
+shapiro.test(resi)
+# Plot for seeing homoscedasticity assumption
+plot(model,which=1)
+# For accurate checking of Homosceadsticity
+library(lmtest)
+bptest(model)
+# To select the best independent variables by using backward elimination
+model_backward=step(object=model,direction="backward",trace=1)
+summary(model_backward)
+model_backward$call
+# After eliminating insignificant variables from the model
+attach(data)
+model2=lm(data$MEDV~CRIM+ZN+CHAS+NOX+RM+DIS+RAD+TAX+PTRATIO+B+LSTAT, data=data)
+summary(model2)
+# Multicollinearity checking by VIF
+vif(model2)
+# Normality checking by histogram
+ggplot(data = model_backward, aes(x = model_backward$residuals)) +
+ geom_histogram(bins = 50,aes(y = ..density.., fill = ..count..)) +
+ scale_fill_gradient(low = "#DCDCDC", high = "#00B9E3") +
+ stat_function(fun = dnorm, colour = "red",
+ args = list(mean = mean(model_backward$residuals),
+ sd = sd(model_backward$residuals))) +
+ ggtitle("Residuals histogram with theoretical normal dist. curve") +theme_bw() +
+ theme(title = element_text(size = 15),
+ axis.text = element_text(size = 10),
+ axis.title = element_text(size=10))
+# Normality checking by shapiro wilk test
+shapiro.test(model_backward$residuals)
+
+# Regression line obtained vs transformed of the MEDV
+predictoras=data[,-c(3,7)]
+predictoras$regresion <- predict(model_backward)
+predictoras$residuals <- residuals(model_backward)
+ggplot(predictoras, aes(x = regresion, y = MEDV)) +
+ geom_smooth(method = "lm", se = FALSE, color = "lightgrey") +
+ geom_segment(aes(xend = regresion, yend = regresion), alpha = .2) + 
+ geom_point(aes(color = abs(residuals), size = abs(residuals))) +
+ scale_color_continuous(low = "#00B9E3", high = "red") +
+ guides(color = FALSE, size = FALSE) + 
+ geom_point(aes(y = regresion), shape = 1) +
+ ggtitle("Regression line obtained vs transformed of the MEDV") +
+ theme_gray() +
+ theme(title = element_text(size = 10),
+ axis.text = element_text(size = 13),
+ axis.title = element_text(size=13))
+
+```
+
